@@ -20,7 +20,7 @@
 	},
 	"license": "Apache-2.0",
 	"scripts": {
-		"test": "vendor/bin/phpunit"
+		"test": "php vendor/phpunit/phpunit/phpunit tests"
 	},
 	"authors": [
 		{
