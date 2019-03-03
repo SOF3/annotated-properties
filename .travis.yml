@@ -3,5 +3,5 @@ php:
   - "7.2"
   - "7.3"
 install: composer install
-script: composer test
+script: vendor/bin/phpunit test --coverage-clover=coverage.xml --whitelist=src
 after_success: bash <(curl -s https://codecov.io/bash)

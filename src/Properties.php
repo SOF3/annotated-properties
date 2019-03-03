@@ -22,7 +22,6 @@
 namespace SOFe\AnnotatedProperties;
 
 use Generator;
-use function array_map;
 use function array_splice;
 use function array_values;
 use function assert;
@@ -32,6 +31,7 @@ use function is_array;
 use function is_string;
 use function iterator_to_array;
 use function ltrim;
+use function mb_strtolower;
 use function rand;
 use function rtrim;
 use function strlen;
@@ -39,16 +39,8 @@ use function substr;
 use function trim;
 
 class Properties{
-	public static function fromFile(string $path){
-		return new Properties(new FileLineIterator($path));
-	}
-
-	public static function fromContents(string $contents){
-		return new Properties(array_map(function(string $line){
-			return rtrim($line, "\r\n");
-		}, explode("\n", $contents)));
-	}
-
+	/** @var bool */
+	private $caseInsensitive;
 	/** @var string */
 	private $separator;
 	/** @var string|null */
@@ -60,8 +52,14 @@ class Properties{
 	private $randomKey = 0;
 	private $map = [];
 	private $order = [];
+	private $caseMap = [];
 
-	public function __construct(iterable $input, string $separator = "=", ?string $comment = "#", ?string $escape = "\\"){
+	public static function builder(){
+		return new PropertiesBuilder();
+	}
+
+	public function __construct(iterable $input, bool $caseInsensitive = false, string $separator = "=", ?string $comment = "#", ?string $escape = "\\"){
+		$this->caseInsensitive = $caseInsensitive;
 		$this->separator = $separator;
 		$this->comment = $comment;
 		$this->escape = $escape;
@@ -83,6 +81,7 @@ class Properties{
 			}else{
 				[$left, $right] = self::separateLine($trimmed, $separator, $escape);
 			}
+			$left = $this->convertCase($left);
 
 			if(!isset($this->map[$left])){
 				$this->map[$left] = [];
@@ -111,12 +110,29 @@ class Properties{
 		return $this->randomPrefix . ($this->randomKey++);
 	}
 
+	private function convertCase(string $string) : string{
+		if(!$this->caseInsensitive){
+			return $string;
+		}
+
+		$lower = mb_strtolower($string);
+		if(isset($this->caseMap[$lower])){
+			return $this->caseMap[$lower];
+		}
+		$this->caseMap[$lower] = $string;
+		return $string;
+	}
+
 	public function get(string $key, ?string $default = null) : ?string{
-		$ret = ($this->map[$key] ?? [$default])[0];
+		$ret = ($this->map[$this->convertCase($key)] ?? [$default])[0];
 		return $ret === true ? null : $ret;
+	}
+	public function getAll(string $key) : array{
+		return $this->map[$this->convertCase($key)] ?? [];
 	}
 
 	public function set(string $key, ?string $value = null, array $comments = []) : void{
+		$key = $this->convertCase($key);
 		if(isset($this->map[$key])){
 			if(count($this->map[$key]) === 1){
 				$this->map[$key][0] = $value;
@@ -174,7 +190,7 @@ class Properties{
 		return $data;
 	}
 
-	public function someHasKeyOnly() : bool{
+	public function anyIsSingleton() : bool{
 		foreach($this->map as $key => $values){
 			if(StringUtils::startsWith($key, $this->randomPrefix)){
 				continue;
@@ -188,7 +204,7 @@ class Properties{
 		return false;
 	}
 
-	public function onlyHasKeyOnly() : bool{
+	public function allAreSingleton() : bool{
 		foreach($this->map as $key => $values){
 			if(StringUtils::startsWith($key, $this->randomPrefix)){
 				continue;

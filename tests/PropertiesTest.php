@@ -86,7 +86,7 @@ class PropertiesTest extends TestCase{
 	}
 
 	public function testMultiCharComments() : void{
-		$properties = new Properties($input = ["// Foo = Bar "], "=", "//");
+		$properties = new Properties($input = ["// Foo = Bar "], false, "=", "//");
 		$data = $properties->getData();
 		Assert::assertEmpty($data);
 		Assert::assertEquals($input, $properties->emitArray());
@@ -118,29 +118,35 @@ class PropertiesTest extends TestCase{
 
 	public function testKeyOnly() : void{
 		$empty = new Properties([]);
-		Assert::assertFalse($empty->someHasKeyOnly());
-		Assert::assertTrue($empty->onlyHasKeyOnly());
+		Assert::assertFalse($empty->anyIsSingleton());
+		Assert::assertTrue($empty->allAreSingleton());
 
 		$none = new Properties(["Foo", "Bar"]);
-		Assert::assertTrue($none->someHasKeyOnly());
-		Assert::assertTrue($none->onlyHasKeyOnly());
+		Assert::assertTrue($none->anyIsSingleton());
+		Assert::assertTrue($none->allAreSingleton());
 
 		$some1 = new Properties(["Foo=Qux", "Bar"]);
-		Assert::assertTrue($some1->someHasKeyOnly());
-		Assert::assertFalse($some1->onlyHasKeyOnly());
+		Assert::assertTrue($some1->anyIsSingleton());
+		Assert::assertFalse($some1->allAreSingleton());
 
 		$some2 = new Properties(["Foo", "Bar=Qux"]);
-		Assert::assertTrue($some2->someHasKeyOnly());
-		Assert::assertFalse($some2->onlyHasKeyOnly());
+		Assert::assertTrue($some2->anyIsSingleton());
+		Assert::assertFalse($some2->allAreSingleton());
 
 		$all = new Properties(["Foo=Qux", "Bar=Qux"]);
-		Assert::assertFalse($all->someHasKeyOnly());
-		Assert::assertFalse($all->onlyHasKeyOnly());
+		Assert::assertFalse($all->anyIsSingleton());
+		Assert::assertFalse($all->allAreSingleton());
 	}
 
 	public function testCommentSingletonPairMix() : void{
-		$properties = new Properties($input=["#Foo=Bar", "Qux", "Corge=Grault", "#Foo", "Qux=Bar", "Corge"]);
+		$properties = new Properties($input = ["#Foo=Bar", "Qux", "Corge=Grault", "#Foo", "Qux=Bar", "Corge"]);
 		Assert::assertEquals($input, $properties->emitArray());
+	}
+
+	public function testCaseInsensitiveGet() : void{
+		$properties = new Properties($input = ["FoO=Bar", "fOo=Qux"], true);
+		Assert::assertEquals("Bar", $properties->get("foO"));
+		Assert::assertEquals(["Bar", "Qux"], $properties->getAll("FOo"));
 	}
 
 	// TODO tests after insertion and deletion
